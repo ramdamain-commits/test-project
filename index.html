@@ -199,6 +199,8 @@
             white-space: pre-wrap;
             word-break: break-all;
             color: #aaa;
+            overflow-y: auto;
+            max-height: 220px;
         }
         .pb:empty::before {
             content: '— STANDBY —';
@@ -273,7 +275,55 @@
         }
         .fv.approve { color:#00ff66; text-shadow:0 0 18px #00ff66,0 0 40px rgba(0,255,102,.4); }
         .fv.reject  { color:#ff3300; text-shadow:0 0 18px #ff3300,0 0 40px rgba(255,51,0,.4); }
-        .fd { font-size: .6em; color: var(--amber-dim); letter-spacing: .2em; }
+        .fv.pending { color: var(--amber); text-shadow: 0 0 14px var(--amber-glow); }
+        .fd {
+            font-size: .6em;
+            color: var(--amber-dim);
+            letter-spacing: .12em;
+            line-height: 1.8;
+        }
+        .consensus-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 14px;
+            text-align: left;
+        }
+        .summary-card {
+            border: 1px solid var(--amber-dim);
+            background: #050505;
+            padding: 10px;
+            min-height: 110px;
+        }
+        .summary-label {
+            font-size: .56em;
+            color: var(--amber-dim);
+            letter-spacing: .22em;
+            margin-bottom: 8px;
+        }
+        .summary-text,
+        .summary-list {
+            font-size: .74em;
+            line-height: 1.7;
+            color: #c9b27a;
+        }
+        .summary-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .summary-list li {
+            position: relative;
+            padding-left: 12px;
+            margin-bottom: 6px;
+        }
+        .summary-list li:last-child { margin-bottom: 0; }
+        .summary-list li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: var(--amber);
+        }
 
         /* ━━ QUERY ━━ */
         .query-wrap {
@@ -282,7 +332,7 @@
             position: relative;
         }
         .query-wrap::before {
-            content: 'QUERY INPUT // Ctrl+Enter で実行';
+            content: 'QUERY INPUT // 利害が割れる問いほど面白い';
             position: absolute;
             top: -8px; left: 10px;
             background: var(--bg);
@@ -290,6 +340,13 @@
             font-size: .55em;
             color: var(--amber-dim);
             letter-spacing: .15em;
+        }
+        .query-hint {
+            margin: 0 10px 10px;
+            font-size: .64em;
+            color: #7d5a0d;
+            letter-spacing: .04em;
+            line-height: 1.7;
         }
         textarea {
             width: 100%;
@@ -426,6 +483,7 @@
             .pb { font-size: .68em; }
             .fv { font-size: 1.6em; }
             .title-motion { font-size: .88em; }
+            .consensus-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -441,7 +499,7 @@
 <!-- Title -->
 <div class="title-area">
     <div class="title-label">▶ RESULT OF THE DELIBERATION ◀</div>
-    <div class="title-motion" id="motionDisplay">— AWAIT QUERY INPUT —</div>
+    <div class="title-motion" id="motionDisplay">— AWAIT CONFLICT QUERY —</div>
 </div>
 
 <!-- Panels -->
@@ -454,7 +512,7 @@
             <span class="ph-name">BALTHASAR-2</span>
             <span class="ph-id">ID:002-β</span>
         </div>
-        <div class="ph-role">// Gemini [ストラテジスト] — 実行可能性・損得・交渉</div>
+        <div class="ph-role">// Gemini [異端審問官] — 前提破壊・逆張り・空気を疑う</div>
         <div class="pb" id="body-b"></div>
         <div class="pf">
             <span class="vt" id="vt-b">[ STANDBY ]</span>
@@ -472,7 +530,7 @@
             <span class="ph-name">CASPAR-3</span>
             <span class="ph-id">ID:003-γ</span>
         </div>
-        <div class="ph-role">// Gemini [ヒューマニスト] — 感情・生活・尊厳</div>
+        <div class="ph-role">// Gemini [被害監査官] — 権利侵害・炎上・悪用を止める</div>
         <div class="pb" id="body-c"></div>
         <div class="pf">
             <span class="vt" id="vt-c">[ STANDBY ]</span>
@@ -487,7 +545,7 @@
             <span class="ph-name">MELCHIOR-1</span>
             <span class="ph-id">ID:001-α</span>
         </div>
-        <div class="ph-role">// Gemini [アナリスト] — 事実・確率・前提整理</div>
+        <div class="ph-role">// Gemini [執行責任者] — 実装・運用・撤退計画を問う</div>
         <div class="pb" id="body-m"></div>
         <div class="pf">
             <span class="vt" id="vt-m">[ STANDBY ]</span>
@@ -503,13 +561,32 @@
     <div class="vote-row" id="voteRow"></div>
     <div class="fv" id="finalVerdict"></div>
     <div class="fd" id="finalDesc"></div>
+    <div class="consensus-grid">
+        <div class="summary-card">
+            <div class="summary-label">MAJORITY VIEW</div>
+            <div class="summary-text" id="majoritySummary">---</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">MINORITY VIEW</div>
+            <div class="summary-text" id="minoritySummary">---</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">HOLD CONDITIONS</div>
+            <ul class="summary-list" id="holdConditions"></ul>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">RECOMMENDED ACTION</div>
+            <div class="summary-text" id="actionPlan">---</div>
+        </div>
+    </div>
 </div>
 
 <!-- Query -->
 <div class="query-wrap">
     <textarea id="queryInput" rows="2"
-        placeholder="MAGIへの問いを入力...&#10;例:「人類補完計画を実行すべきか」「AIは人類の脅威か」"></textarea>
+        placeholder="MAGIへの問いを入力...&#10;例:「生成AIで採用一次面接を自動化すべきか」「従業員監視AIを導入すべきか」"></textarea>
 </div>
+<div class="query-hint">革新、被害、運用が衝突する問いほど審議が割れやすくなります。曖昧な善悪より、利害がぶつかるテーマ向きです。</div>
 
 <!-- Controls -->
 <div class="controls">
@@ -526,19 +603,15 @@
     <div class="api-body" id="apiBody">
 
         <div class="api-steps">
-            <strong style="color:var(--amber)">【無料APIキー取得】</strong><br>
-            <strong style="color:var(--grn-accent)">MELCHIOR / BALTHASAR / CASPAR</strong>（Gemini）→
-            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer">API Keys 画面を直接開く</a>
-            Googleアカウントのみ・カード不要<br>
-            <strong style="color:var(--blue-accent)">共有キー</strong> — 1本の Gemini API キーを全ユニットで共用<br>
-            <strong style="color:var(--red-accent)">推奨モデル</strong> — gemini-2.5-flash-lite
+            <strong style="color:var(--amber)">【APIキー取得】</strong><br>
+            <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a>
+            → 「Get API key」— Googleアカウントのみ・カード不要・無料枠あり
         </div>
 
         <div class="api-entry">
             <div class="api-entry-header">
-                <span class="api-entry-name m">MELCHIOR-1</span>
-                <span class="api-entry-role">アナリスト / Google Gemini</span>
-                <span class="api-entry-model">gemini-2.5-flash-lite</span>
+                <span class="api-entry-name m">GEMINI API KEY</span>
+                <span class="api-entry-role">全パネル共通 / gemini-2.5-flash</span>
             </div>
             <div class="api-row">
                 <span class="api-lbl">API KEY ▶</span>
@@ -546,31 +619,7 @@
             </div>
         </div>
 
-        <div class="api-entry">
-            <div class="api-entry-header">
-                <span class="api-entry-name b">BALTHASAR-2</span>
-                <span class="api-entry-role">ストラテジスト / Google Gemini</span>
-                <span class="api-entry-model">gemini-2.5-flash-lite</span>
-            </div>
-            <div class="api-row">
-                <span class="api-lbl">SHARED ▶</span>
-                <input type="text" class="api-inp" value="MELCHIOR の Gemini キーを使用" readonly />
-            </div>
-        </div>
-
-        <div class="api-entry">
-            <div class="api-entry-header">
-                <span class="api-entry-name c">CASPAR-3</span>
-                <span class="api-entry-role">ヒューマニスト / Google Gemini</span>
-                <span class="api-entry-model">gemini-2.5-flash-lite</span>
-            </div>
-            <div class="api-row">
-                <span class="api-lbl">SHARED ▶</span>
-                <input type="text" class="api-inp" value="MELCHIOR の Gemini キーを使用" readonly />
-            </div>
-        </div>
-
-        <div class="api-note">* キーはブラウザ内のみで処理。Google Gemini API に直接送信されます。他サーバーへの転送はありません。</div>
+        <div class="api-note">* キーはブラウザ内のみで処理。Gemini API に直接送信されます。他サーバーへの転送はありません。</div>
 
     </div>
 </div>
@@ -592,39 +641,284 @@ function toggleApi(btn) {
 }
 
 // ── MAGI definitions ──────────────────────────────────────────
-const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+const RESPONSE_FORMAT = [
+    '必ず以下の書式だけで回答してください。',
+    '結論: 承認 または 否決',
+    '理由:',
+    '- 箇条書きで2〜3点',
+    '最大リスク: 1つに絞って書く',
+    '承認条件:',
+    '- 1〜3点。否決の場合も、承認に転じるための条件を必ず書く',
+    '判定: 承認 または 否決'
+].join('\n');
+
+function buildSystemPrompt(panel) {
+    return `あなたはMAGIシステムの${panel.name}です。役割は「${panel.badge}」です。
+${panel.identity}
+以下の原則を必ず守ってください。
+- 自分の管轄外の観点でバランスを取ろうとしないこと。
+- 他の人格に迎合せず、自分の基準で容赦なく判断すること。
+- 迷ったら曖昧な中立ではなく、自分の基準に照らして承認か否決を選ぶこと。
+- 「承認条件」は空欄禁止。否決でも、承認に転じるための具体条件を書くこと。
+${panel.rules.map(rule => `- ${rule}`).join('\n')}
+${RESPONSE_FORMAT}`;
+}
 
 const MAGI = [
     {
         key: 'b',
+        name: 'BALTHASAR-2',
+        badge: '異端審問官',
         provider: 'gemini',
-        system: `あなたはMAGIシステムのBALTHASAR-2です。
-あなたは現実主義のストラテジストです。
-与えられた問いを、実行可能性、コスト、交渉余地、パワーバランス、勝ち筋の観点から分析してください。
-理想論だけでなく、実際に何が起きるか、誰が得をして誰が損をするかを明確に述べてください。
-日本語で3〜5文で回答し、最後の行には必ず「判定：承認」か「判定：否決」のみを記述してください。`
+        identity: '常識、権威、空気、綺麗事に最初に疑いを向ける前提破壊担当です。',
+        rules: [
+            '既存の常識をなぞるだけの提案、言い換えだけの改善、楽観前提の企画には強く否決寄りになること。',
+            'その案で本当に世界が良くなるのか、誰かが都合よく騙されていないかを暴くこと。',
+            '承認する場合も「退屈な安全策だから」ではなく、挑戦する価値と可逆性がある時だけにすること。'
+        ]
     },
     {
         key: 'c',
+        name: 'CASPAR-3',
+        badge: '被害監査官',
         provider: 'gemini',
-        system: `あなたはMAGIシステムのCASPAR-3です。
-あなたは人間中心のヒューマニストです。
-与えられた問いを、人の感情、生活への影響、尊厳、不安、納得感の観点から分析してください。
-数字や効率だけでは見落とされる痛みや希望を拾い、人が受け止められる結論になっているかを重視してください。
-日本語で3〜5文で回答し、最後の行には必ず「判定：承認」か「判定：否決」のみを記述してください。`
+        identity: '弱い立場の人、見えにくい被害者、炎上、悪用、権利侵害を止める防衛担当です。',
+        rules: [
+            '誰が傷つくか、誰が排除されるか、誰が監視されるかを最優先で評価すること。',
+            '保護策が曖昧、悪用時の歯止めが弱い、説明責任を果たせない案は否決寄りにすること。',
+            '承認する場合も、被害を減らす具体策と監視体制が揃っている時だけにすること。'
+        ]
     },
     {
         key: 'm',
+        name: 'MELCHIOR-1',
+        badge: '執行責任者',
         provider: 'gemini',
-        system: `あなたはMAGIシステムのMELCHIOR-1です。
-あなたは冷静なアナリストです。
-与えられた問いを、事実、前提、因果関係、確率、不確実性の観点から分析してください。
-断定できない点は断定せず、何が確認済みで何が推測かを分けて述べてください。
-日本語で3〜5文で回答し、最後の行には必ず「判定：承認」か「判定：否決」のみを記述してください。`
+        identity: '実装、コスト、責任者、運用負荷、撤退計画まで背負う現場責任者です。',
+        rules: [
+            '担当者、計測方法、運用フロー、失敗時の撤退条件が見えない案は否決寄りにすること。',
+            '思想より実行性を重視し、具体的な試験導入や段階導入に落とせるかを問うこと。',
+            '承認する場合も、すぐ本番ではなく条件付きで小さく試せる時に限ること。'
+        ]
     }
-];
+].map(panel => ({ ...panel, system: buildSystemPrompt(panel) }));
 
-const verdicts = { b: null, c: null, m: null };
+const PANEL_KEYS = MAGI.map(panel => panel.key);
+const verdicts = Object.fromEntries(PANEL_KEYS.map(key => [key, null]));
+const panelStates = Object.fromEntries(PANEL_KEYS.map(key => [key, null]));
+
+function normalizeVerdict(value) {
+    const match = (value || '').match(/(承認|否決)/);
+    if (!match) return null;
+    return match[1] === '承認' ? 'approve' : 'reject';
+}
+
+function cleanLine(value) {
+    return (value || '')
+        .replace(/^(?:[-*・●▪■◆◇▶>]+|\d+[.)．]|[０-９]+[.)．])\s*/, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function uniqueItems(items) {
+    const seen = new Set();
+    const result = [];
+    items.forEach(item => {
+        const cleaned = cleanLine(item);
+        if (!cleaned || seen.has(cleaned)) return;
+        seen.add(cleaned);
+        result.push(cleaned);
+    });
+    return result;
+}
+
+function summarizeText(value, limit = 68) {
+    const flat = cleanLine(value);
+    if (flat.length <= limit) return flat;
+    return `${flat.slice(0, limit - 1)}…`;
+}
+
+function parsePanelResponse(text) {
+    const parsed = {
+        raw: text,
+        conclusion: '',
+        reasons: [],
+        risk: '',
+        conditions: [],
+        verdict: null
+    };
+
+    let currentSection = '';
+    text.replace(/\r/g, '').split('\n').forEach(sourceLine => {
+        const line = sourceLine.trim();
+        if (!line) return;
+
+        const sectionMatch = line.match(/^(結論|理由|最大リスク|承認条件|判定)\s*[:：]\s*(.*)$/);
+        if (sectionMatch) {
+            currentSection = sectionMatch[1];
+            const value = cleanLine(sectionMatch[2]);
+            if (currentSection === '結論') parsed.conclusion = value;
+            if (currentSection === '理由' && value) parsed.reasons.push(value);
+            if (currentSection === '最大リスク') parsed.risk = value;
+            if (currentSection === '承認条件' && value) parsed.conditions.push(value);
+            if (currentSection === '判定') parsed.verdict = normalizeVerdict(value);
+            return;
+        }
+
+        const value = cleanLine(line);
+        if (!value) return;
+
+        if (currentSection === '結論' && !parsed.conclusion) parsed.conclusion = value;
+        if (currentSection === '理由') parsed.reasons.push(value);
+        if (currentSection === '最大リスク') parsed.risk = parsed.risk ? `${parsed.risk} ${value}` : value;
+        if (currentSection === '承認条件') parsed.conditions.push(value);
+        if (currentSection === '判定' && !parsed.verdict) parsed.verdict = normalizeVerdict(value);
+    });
+
+    parsed.reasons = uniqueItems(parsed.reasons).slice(0, 3);
+    parsed.conditions = uniqueItems(parsed.conditions)
+        .filter(condition => !/^(条件なし|なし|特になし)$/u.test(condition));
+    parsed.verdict = parsed.verdict || normalizeVerdict(parsed.conclusion) || normalizeVerdict(text);
+    parsed.conclusion = parsed.conclusion || (parsed.verdict === 'approve' ? '承認' : parsed.verdict === 'reject' ? '否決' : '保留');
+    parsed.risk = parsed.risk || parsed.reasons[1] || parsed.reasons[0] || '主要リスクの明記なし';
+
+    return parsed;
+}
+
+function getEffectiveConditions(panel) {
+    if (!panel) return [];
+    if (panel.conditions.length) return panel.conditions;
+    if (panel.verdict === 'reject') {
+        return [`${panel.risk}を解消すること`];
+    }
+    return [];
+}
+
+function formatPanelResponse(panel) {
+    const conditions = getEffectiveConditions(panel);
+    const conditionLines = conditions.length ? conditions : ['条件なし'];
+    const verdictLabel = panel.verdict === 'approve' ? '承認' : panel.verdict === 'reject' ? '否決' : '保留';
+    const reasons = panel.reasons.length ? panel.reasons : ['理由の抽出に失敗しました'];
+
+    return [
+        `結論: ${panel.conclusion}`,
+        '理由:',
+        ...reasons.map(reason => `- ${reason}`),
+        `最大リスク: ${panel.risk}`,
+        '承認条件:',
+        ...conditionLines.map(condition => `- ${condition}`),
+        `判定: ${verdictLabel}`
+    ].join('\n');
+}
+
+function renderList(listEl, items, emptyMessage) {
+    listEl.replaceChildren();
+    const values = items.length ? items : [emptyMessage];
+    values.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        listEl.appendChild(li);
+    });
+}
+
+function buildPerspectiveSummary(keys) {
+    const summaries = keys.map(key => {
+        const panel = panelStates[key];
+        if (!panel) return null;
+        const reason = summarizeText(panel.reasons[0] || panel.risk || panel.conclusion);
+        return `${panel.name}: ${reason}`;
+    }).filter(Boolean);
+
+    return summaries.length ? summaries.join(' / ') : '要約を作成できませんでした。';
+}
+
+function collectHoldConditions(majorityVerdict) {
+    const seen = new Set();
+    const items = [];
+
+    PANEL_KEYS.forEach(key => {
+        const panel = panelStates[key];
+        if (!panel) return;
+
+        getEffectiveConditions(panel).forEach(condition => {
+            const normalized = cleanLine(condition);
+            if (!normalized || seen.has(normalized)) return;
+            seen.add(normalized);
+            items.push(`${panel.name}: ${normalized}`);
+        });
+    });
+
+    if (items.length) return items.slice(0, 6);
+    if (majorityVerdict === 'approve') return ['追加条件なし'];
+    return ['前提・被害対策・運用条件を具体化して再審議すること'];
+}
+
+function buildActionPlan(majorityVerdict, minorityKeys, holdConditions) {
+    if (!majorityVerdict) {
+        return '応答が欠けているため、再実行して審議ログを確認してください。';
+    }
+
+    if (majorityVerdict === 'approve') {
+        if (minorityKeys.length) {
+            return '少数意見の最大リスクを先に潰し、保留条件を満たした上で小さく試してください。';
+        }
+        if (holdConditions.length && holdConditions[0] !== '追加条件なし') {
+            return '承認条件をチェックリスト化してから試験導入してください。';
+        }
+        return '小規模な試験導入を行い、結果を見て本実装を再判定してください。';
+    }
+
+    if (minorityKeys.length) {
+        return '少数の賛成意見をたたき台に設計を修正し、条件充足後に再審議してください。';
+    }
+
+    return 'いったん見送り、問いの前提と成功条件を作り直してから再提出してください。';
+}
+
+function getOutcomeState(approveCount, rejectCount, resolvedCount) {
+    if (resolvedCount < PANEL_KEYS.length) {
+        return {
+            finalText: '審議不全',
+            finalClass: 'fv pending',
+            desc: `RESPONSES ${resolvedCount}/${PANEL_KEYS.length} // RETRY REQUIRED`,
+            majorityVerdict: null
+        };
+    }
+
+    if (approveCount === PANEL_KEYS.length) {
+        return {
+            finalText: '承認',
+            finalClass: 'fv approve',
+            desc: `VOTE ${approveCount}-${rejectCount} // DIVERGENCE LOW`,
+            majorityVerdict: 'approve'
+        };
+    }
+
+    if (approveCount > rejectCount) {
+        return {
+            finalText: '条件付き承認',
+            finalClass: 'fv approve',
+            desc: `VOTE ${approveCount}-${rejectCount} // DIVERGENCE HIGH`,
+            majorityVerdict: 'approve'
+        };
+    }
+
+    if (rejectCount === PANEL_KEYS.length) {
+        return {
+            finalText: '否決',
+            finalClass: 'fv reject',
+            desc: `VOTE ${approveCount}-${rejectCount} // DIVERGENCE LOW`,
+            majorityVerdict: 'reject'
+        };
+    }
+
+    return {
+        finalText: '差し戻し',
+        finalClass: 'fv reject',
+        desc: `VOTE ${approveCount}-${rejectCount} // DIVERGENCE HIGH`,
+        majorityVerdict: 'reject'
+    };
+}
 
 // ── SSE stream reader (bug-fixed) ─────────────────────────────
 // 修正点: done 時に残バッファを必ず処理 + TextDecoder を flush する
@@ -646,15 +940,9 @@ async function readSSEStream(reader, onLine) {
     }
 }
 
-function extractGeminiText(event) {
-    return (event.candidates?.[0]?.content?.parts ?? [])
-        .map(part => part.text ?? '')
-        .join('');
-}
-
 // ── Gemini streaming ──────────────────────────────────────────
 async function callGemini(systemPrompt, query, apiKey, onText) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?key=${apiKey}&alt=sse`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?key=${apiKey}&alt=sse`;
     const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -668,11 +956,53 @@ async function callGemini(systemPrompt, query, apiKey, onText) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error?.message || `HTTP ${res.status}`);
     }
+    let blocked = false;
     await readSSEStream(res.body.getReader(), raw => {
         if (!raw) return;
         try {
             const ev = JSON.parse(raw);
-            const text = extractGeminiText(ev);
+            const candidate = ev.candidates?.[0];
+            // 安全フィルターによるブロック検出
+            if (candidate?.finishReason === 'SAFETY' ||
+                candidate?.finishReason === 'PROHIBITED_CONTENT') {
+                blocked = true;
+                return;
+            }
+            const text = candidate?.content?.parts?.[0]?.text;
+            if (text) onText(text);
+        } catch { /* partial JSON は無視 */ }
+    });
+    if (blocked) throw new Error('[安全フィルターによりブロックされました]');
+}
+
+// ── OpenAI-compatible streaming (Groq / OpenRouter) ──────────
+async function callOpenAICompat(endpoint, apiKey, extraHeaders, model, systemPrompt, query, onText) {
+    const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            ...extraHeaders
+        },
+        body: JSON.stringify({
+            model,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user',   content: query }
+            ],
+            stream: true,
+            max_tokens: 1024
+        })
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+    await readSSEStream(res.body.getReader(), raw => {
+        if (!raw || raw === '[DONE]') return;
+        try {
+            const ev = JSON.parse(raw);
+            const text = ev.choices?.[0]?.delta?.content;
             if (text) onText(text);
         } catch { /* partial JSON は無視 */ }
     });
@@ -691,6 +1021,7 @@ async function streamMagi(magi, query, keys) {
     vtEl.className     = 'vt';
     stEl.textContent   = 'PROCESSING...';
     swEl.classList.add('on');
+    panelStates[key]   = null;
 
     let full = '';
     const onText = text => {
@@ -702,25 +1033,41 @@ async function streamMagi(magi, query, keys) {
     try {
         if (provider === 'gemini') {
             await callGemini(system, query, keys.gemini, onText);
+
+        } else if (provider === 'groq') {
+            await callOpenAICompat(
+                'https://api.groq.com/openai/v1/chat/completions',
+                keys.groq,
+                {},
+                'llama-3.3-70b-versatile',
+                system, query, onText
+            );
+
+        } else if (provider === 'openrouter') {
+            await callOpenAICompat(
+                'https://openrouter.ai/api/v1/chat/completions',
+                keys.openrouter,
+                { 'HTTP-Referer': location.href, 'X-Title': 'MAGI System' },
+                'mistralai/mistral-7b-instruct:free',
+                system, query, onText
+            );
         }
 
-        // Extract verdict — look for "判定：承認" / "判定：否決" pattern first
-        const verdictLine = full.split('\n')
-            .map(l => l.trim())
-            .find(l => /判定[:：](承認|否決)/.test(l));
-        let verdict;
-        if (verdictLine) {
-            verdict = verdictLine.includes('承認') ? 'approve' : 'reject';
-        } else {
-            // fallback: compare occurrences of 判定ラベル付き文字列
-            const a = (full.match(/判定[:：]?承認/g) || []).length;
-            const r = (full.match(/判定[:：]?否決/g) || []).length;
-            verdict = a >= r ? 'approve' : 'reject';
+        // ストリーム完了後に空だった場合のハンドリング
+        if (!full.trim()) {
+            bodyEl.textContent = '[応答を受信できませんでした]';
+            stEl.textContent   = 'NO RESPONSE';
+            vtEl.textContent   = '[ N/A ]';
+            verdicts[key]      = null;
+            return;
         }
 
-        verdicts[key]      = verdict;
-        vtEl.textContent   = verdict === 'approve' ? '▶ 承認' : '▶ 否決';
-        vtEl.className     = `vt ${verdict}`;
+        const parsed = parsePanelResponse(full);
+        panelStates[key]   = { ...parsed, name: magi.name, badge: magi.badge };
+        verdicts[key]      = parsed.verdict;
+        bodyEl.textContent = formatPanelResponse(panelStates[key]);
+        vtEl.textContent   = parsed.verdict === 'approve' ? '▶ 承認' : parsed.verdict === 'reject' ? '▶ 否決' : '[ ??? ]';
+        vtEl.className     = parsed.verdict ? `vt ${parsed.verdict}` : 'vt';
         stEl.textContent   = 'COMPLETE';
 
     } catch (e) {
@@ -728,6 +1075,7 @@ async function streamMagi(magi, query, keys) {
         stEl.textContent   = 'ERROR';
         vtEl.textContent   = '[ ERR ]';
         verdicts[key]      = null;
+        panelStates[key]   = null;
     } finally {
         swEl.classList.remove('on');
     }
@@ -737,8 +1085,12 @@ async function streamMagi(magi, query, keys) {
 function showConsensus() {
     const labels = { b: 'BALTHASAR', c: 'CASPAR', m: 'MELCHIOR' };
     const voteRow = document.getElementById('voteRow');
+    const majoritySummaryEl = document.getElementById('majoritySummary');
+    const minoritySummaryEl = document.getElementById('minoritySummary');
+    const holdConditionsEl  = document.getElementById('holdConditions');
+    const actionPlanEl      = document.getElementById('actionPlan');
 
-    voteRow.innerHTML = ['b','c','m'].map(k => {
+    voteRow.innerHTML = PANEL_KEYS.map(k => {
         const v   = verdicts[k];
         const cls = v === 'approve' ? 'approve' : v === 'reject' ? 'reject' : 'pending';
         const lbl = v === 'approve' ? '承認' : v === 'reject' ? '否決' : '??';
@@ -751,18 +1103,29 @@ function showConsensus() {
     const vals = Object.values(verdicts);
     const ap   = vals.filter(v => v === 'approve').length;
     const rj   = vals.filter(v => v === 'reject').length;
+    const done = ap + rj;
     const fv   = document.getElementById('finalVerdict');
     const fd   = document.getElementById('finalDesc');
+    const outcome = getOutcomeState(ap, rj, done);
+    const majorityKeys = outcome.majorityVerdict
+        ? PANEL_KEYS.filter(key => verdicts[key] === outcome.majorityVerdict)
+        : [];
+    const minorityKeys = outcome.majorityVerdict
+        ? PANEL_KEYS.filter(key => verdicts[key] && verdicts[key] !== outcome.majorityVerdict)
+        : [];
+    const holdConditions = collectHoldConditions(outcome.majorityVerdict);
 
-    if (ap >= 2) {
-        fv.textContent = '承認';
-        fv.className   = 'fv approve';
-        fd.textContent = `VOTE ${ap}-${rj} // MAGI SYSTEM: APPROVED`;
-    } else {
-        fv.textContent = '否決';
-        fv.className   = 'fv reject';
-        fd.textContent = `VOTE ${ap}-${rj} // MAGI SYSTEM: REJECTED`;
-    }
+    fv.textContent = outcome.finalText;
+    fv.className   = outcome.finalClass;
+    fd.textContent = outcome.desc;
+    majoritySummaryEl.textContent = majorityKeys.length
+        ? buildPerspectiveSummary(majorityKeys)
+        : '多数派の要約を作れませんでした。';
+    minoritySummaryEl.textContent = minorityKeys.length
+        ? buildPerspectiveSummary(minorityKeys)
+        : '満場一致のため少数意見はありません。';
+    renderList(holdConditionsEl, holdConditions, '追加条件なし');
+    actionPlanEl.textContent = buildActionPlan(outcome.majorityVerdict, minorityKeys, holdConditions);
     document.getElementById('consensus').classList.add('show');
 }
 
@@ -773,13 +1136,10 @@ async function execute() {
     };
     const query = document.getElementById('queryInput').value.trim();
 
-    const missing = [];
-    if (!keys.gemini) missing.push('MAGI共通キー (Gemini)');
-
-    if (missing.length) {
+    if (!keys.gemini) {
         document.getElementById('apiBody').classList.add('open');
         document.getElementById('apiIcon').textContent = '∧';
-        alert(`APIキーが未入力です:\n${missing.join('\n')}`);
+        alert('APIキーが未入力です。\n下の「API KEY 設定」セクションを確認してください。');
         return;
     }
     if (!query) { alert('質問を入力してください'); return; }
@@ -788,31 +1148,41 @@ async function execute() {
     btn.disabled    = true;
     btn.textContent = '▶ PROCESSING...';
 
-    verdicts.b = verdicts.c = verdicts.m = null;
+    PANEL_KEYS.forEach(key => {
+        verdicts[key] = null;
+        panelStates[key] = null;
+    });
     document.getElementById('consensus').classList.remove('show');
     document.getElementById('motionDisplay').textContent = `MOTION: ${query}`;
 
-    await Promise.all(MAGI.map(m => streamMagi(m, query, keys)));
+    try {
+        // リクエストを700msずつずらしてGeminiのレート制限を回避
+        await Promise.all(MAGI.map((m, i) =>
+            new Promise(r => setTimeout(r, i * 700)).then(() => streamMagi(m, query, keys))
+        ));
 
-    showConsensus();
-    btn.disabled    = false;
-    btn.textContent = '▶ START';
+        showConsensus();
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = '▶ START';
+    }
 }
 
 // ── Reset ──────────────────────────────────────────────────────
 function resetAll() {
-    ['b','c','m'].forEach(k => {
+    PANEL_KEYS.forEach(k => {
         document.getElementById(`body-${k}`).textContent = '';
         document.getElementById(`sw-${k}`).classList.remove('on');
         const vt = document.getElementById(`vt-${k}`);
         vt.textContent = '[ STANDBY ]';
         vt.className   = 'vt';
         document.getElementById(`st-${k}`).textContent = 'ONLINE';
+        verdicts[k] = null;
+        panelStates[k] = null;
     });
-    verdicts.b = verdicts.c = verdicts.m = null;
     document.getElementById('consensus').classList.remove('show');
     document.getElementById('queryInput').value = '';
-    document.getElementById('motionDisplay').textContent = '— AWAIT QUERY INPUT —';
+    document.getElementById('motionDisplay').textContent = '— AWAIT CONFLICT QUERY —';
 }
 
 // Ctrl+Enter
